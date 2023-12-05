@@ -1,2 +1,2 @@
 # FileExchangeSystem
-Socket File Exchange Program Implemented in Python.
+File Exchange System using Sockets Implemented in Python.
