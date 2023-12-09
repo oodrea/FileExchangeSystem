@@ -118,6 +118,9 @@ def process_command(client_socket, initial_msg):
 
         elif command_type == "/unicast":
             unicast(client_socket, initial_msg)
+        
+        elif command_type == "/online":
+            online(client_socket, initial_msg)
 
         else:
             pass
@@ -130,40 +133,45 @@ def process_command(client_socket, initial_msg):
     except Exception as e:
         print(f"Error: {e}")
 
+def online(client_socket, message):
+    print(len(connected_clients))
+    print(connected_clients)
+    online_users = "\n".join(f"{index}. {handle}" for index, handle in enumerate(connected_clients.values(), start=1) if handle)
+    print(online_users)
+    message_to_send = f"/online Online Users\n{online_users}\n"
+    client_socket.send(message_to_send.encode())
+
+
 def broadcastactions(sender_socket, message):
     for client in clients:
         client.send(f"/broadcastactions {message}".encode())
 
 def broadcast(sender_socket, message):
+    msg, handle = message.split("<END>")
     for client in clients:
-        client.send(f"/broadcast {message}".encode())
+        client.send(f"/broadcast {handle}<END>{msg}".encode())
 
 def unicast(sender_socket, message):
+    def get_client_socket_by_handle(handle_to_find):
+        for client_socket, handle in connected_clients.items():
+            if handle == handle_to_find:
+                return client_socket
     try:
         # Parse the handle and message from the received command
-        parts = message.split(maxsplit=2)
-        if len(parts) >= 3:
-            handle = parts[1]
-            # print(handle)
-            message_body = parts[2]
-            # print(message_body)
+        parts = message.split()
+        if len(parts) >= 3 and parts[0] == "/unicast":
+            receiver_handle = parts[1]
+            # print("Receiver handle:", receiver_handle)
 
-            # Find the socket associated with the specified handle
-            for client_socket in clients:
-                if client_socket != sender_socket:
-                    client_address = client_socket.getpeername()
-                    client_handle = connected_clients.get(client_address, "")
-                    if client_handle == handle:
-                        # Send the unicast message to the specified client
-                        print(f"/unicast {handle} {message_body}")
-                        client_socket.send(f"/unicast {handle} {message_body}".encode())
-                        return
-
-            # Handle case where the specified handle is not found
-            sender_socket.send("Error: Handle not found for unicast.".encode())
-
-        else:
-            sender_socket.send("Error: Invalid unicast command.".encode())
+        msg, _ = message.split("<END>")
+        # print(f"recv handle = {receiver_handle}")
+        senderhandle = connected_clients.get(sender_socket)
+        message_body = msg[len("/unicast "):]
+        # print(message_body)
+        recvclient_socket = get_client_socket_by_handle(receiver_handle)
+        # print(f"recv socket={recvclient_socket} sendersocket = {sender_socket}")
+        # print(f"/unicast {senderhandle} {message_body[len(receiver_handle):]}")
+        recvclient_socket.send(f"/unicast {senderhandle}<END>{message_body[len(receiver_handle):]}".encode())
 
     except Exception as e:
         print(f"Error in unicast: {e}")
@@ -172,8 +180,7 @@ def unicast(sender_socket, message):
 
 # /join
 def join(client_socket):
-    client_address = client_socket.getpeername()
-    connected_clients[client_address] = "" # adds client to list of connected clients
+    connected_clients[client_socket] = "" # adds client to list of connected clients
     client_socket.send("/join".encode())
 
 # initializes ServerFilesDirectory -> used for /dir
@@ -314,23 +321,24 @@ def register(client_socket, initial_msg):
 # /leave
 def leave(client_socket):
     client_address = client_socket.getpeername()
-    handle = connected_clients[client_address]
+    handle = connected_clients[client_socket]
     print(f"Connection from {client_address} closed.")
 
     broadcastactions(client_socket, f"{handle} has left the server.")
+    client_socket.send("/leave".encode())
     # client_socket.send("{handle} has left the room.".encode())
     del connected_clients[client_address]
     clients.remove(client_socket)
 
     # if no more connected users = server shuts down
-    if len(connected_clients) == 0:
+    if len(clients) == 0:
         print("No clients connected. Server is shutting down.")
         server_socket.close()
         sys.exit()
     else:
         print("Remaining clients:")
-        for client_address, handle in connected_clients.items():
-            print(f"Client Address: {client_address}, Handle: {handle}")
+        for client_addresses, handle in connected_clients.items():
+            print(f"Client Address: {client_addresses}, Handle: {handle}")
 
 
 if __name__ == "__main__":
