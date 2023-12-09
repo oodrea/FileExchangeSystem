@@ -132,11 +132,11 @@ def process_command(client_socket, initial_msg):
 
 def broadcastactions(sender_socket, message):
     for client in clients:
-            client.send(f"/broadcastactions {message}".encode())
+        client.send(f"/broadcastactions {message}".encode())
 
 def broadcast(sender_socket, message):
     for client in clients:
-            client.send(f"/broadcast {message}".encode())
+        client.send(f"/broadcast {message}".encode())
 
 def unicast(sender_socket, message):
     try:
@@ -281,11 +281,11 @@ def download_files(client_socket, initial_msg):
             # file not found
             client_socket.send('File not found'.encode())
     except ValueError as ve:
-        print(f"Error downloading file: {ve}")
+        # print(f"Error downloading file: {ve}")
         client_socket.send('File not found'.encode())
 
     except Exception as e:
-        print(f"Error downloading file: {e}")
+        # print(f"Error downloading file: {e}")
         client_socket.send('File not found'.encode())
 
 # /register

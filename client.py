@@ -125,9 +125,6 @@ class FileSenderGUI(tk.Tk):
         joinmsg = "Joined server " + self.server_address.get() + ":" + self.server_port.get() + " successfully!"
         messagebox.showinfo("wow!", "Connection to the File Exchange Server is Successful!")
         self.status_label.config(text=joinmsg)
-    
-    def broadcast(self, msg):
-        self.client_socket.send(f"/broadcast {msg}".encode())
 
     # /send message (for chatting WIP)
     def send_message(self):
@@ -328,11 +325,11 @@ class FileSenderGUI(tk.Tk):
             while self.receive_loop:
                 message = self.client_socket.recv(1024).decode('utf-8')
                 print(message.split()[0])
-                if message.split()[0]== "/broadcast":
-                    self.displaymsg_withtime(message[len("/broadcast "):])
+                if message.split()[0]=="/broadcast":
+                    self.displaymsg_withtime(message[len("/broadcast /broadcast"):])
                 elif message.startswith("/unicast"):
                     self.handle_unicast(message[len("/unicast "):])
-                elif message.startswith("/broadcastactions"):
+                elif message.split()[0]== "/broadcastactions":
                     self.display_message(message[len("/broadcastactions "):])
                 elif message.startswith("/join"):
                     self.handle_join()
