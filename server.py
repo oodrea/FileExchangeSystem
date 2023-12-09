@@ -19,6 +19,7 @@ import tqdm
 
 # dictionary to store connected clients and their handles
 connected_clients = {}
+clients = []
 
 
 # main function to start the server
@@ -30,7 +31,7 @@ def main():
     global server_files
     server_files = {}
     server_ip = 'localhost'
-    server_port = 9999
+    server_port = 12345
     server_files_directory = serverFilesDir()
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((server_ip, server_port))
@@ -50,6 +51,7 @@ def main():
     try:
         while True:
             client_socket, client_address = server_socket.accept()
+            clients.append(client_socket)
             client_handler = threading.Thread(target=handle_client, args=(client_socket, client_address))
             client_handler.start()
 
@@ -89,6 +91,7 @@ def handle_client(client_socket, client_address):
         client_socket.close()
 
 def process_command(client_socket, initial_msg):
+    print(f"socket: {client_socket} | msg: {initial_msg}")
     try:
         command_type = initial_msg.split()[0]
 
@@ -111,7 +114,7 @@ def process_command(client_socket, initial_msg):
             download_files(client_socket, initial_msg)
 
         elif command_type == "/broadcast":
-            pass
+            broadcast(client_socket, initial_msg)
 
         elif command_type == "/unicast":
             pass
@@ -127,11 +130,48 @@ def process_command(client_socket, initial_msg):
     except Exception as e:
         print(f"Error: {e}")
 
-    
+def broadcastactions(sender_socket, message):
+    for client in clients:
+            client.send(f"/broadcastactions {message}".encode())
+
+def broadcast(sender_socket, message):
+    for client in clients:
+            client.send(f"/broadcast {message}".encode())
+
+def unicast(sender_socket, message):
+    try:
+        # Parse the handle and message from the received command
+        parts = message.split(maxsplit=2)
+        if len(parts) >= 3:
+            handle = parts[1]
+            message_body = parts[2]
+
+            # Find the socket associated with the specified handle
+            for client_socket in clients:
+                if client_socket != sender_socket:
+                    client_address = client_socket.getpeername()
+                    client_handle = connected_clients.get(client_address, "")
+                    if client_handle == handle:
+                        # Send the unicast message to the specified client
+                        client_socket.send(f"/unicast {handle} {message_body}".encode())
+                        return
+
+            # Handle case where the specified handle is not found
+            sender_socket.send("Error: Handle not found for unicast.".encode())
+
+        else:
+            sender_socket.send("Error: Invalid unicast command.".encode())
+
+    except Exception as e:
+        print(f"Error in unicast: {e}")
+
+
+
 # /join
 def join(client_socket):
     client_address = client_socket.getpeername()
     connected_clients[client_address] = "" # adds client to list of connected clients
+    client_socket.send("/join".encode())
 
 # initializes ServerFilesDirectory -> used for /dir
 def serverFilesDir():
@@ -153,7 +193,21 @@ def send_dir_list(client_socket):
         for index, filename in server_files.items(): # updates server_files {}
             file_list_with_numbers += f"{index}. {os.path.basename(filename)}\n"
 
-        client_socket.send(f"Server Directory\n\n{file_list_with_numbers}\n".encode())
+        client_socket.send(f"/dir Server Directory\n\n{file_list_with_numbers}\n".encode())
+
+    except Exception as e:
+        send_error_message(client_socket, f"Error getting directory list: {e} [/dir]")
+
+def send_dir_listDL(client_socket):
+    try:
+        file_list = os.listdir(server_files_directory)
+        server_files = {index+1: filename for index, filename in enumerate(file_list)}
+
+        file_list_with_numbers = ""
+        for index, filename in server_files.items(): # updates server_files {}
+            file_list_with_numbers += f"{index}. {os.path.basename(filename)}\n"
+
+        client_socket.send(f"/get Server Directory\n\n{file_list_with_numbers}\n".encode())
 
     except Exception as e:
         send_error_message(client_socket, f"Error getting directory list: {e} [/dir]")
@@ -203,6 +257,7 @@ def store(client_socket):
 
 # /get
 def download_files(client_socket, initial_msg):
+    send_dir_listDL(client_socket)
     file_name = initial_msg[len("/get "):]
     try:
         file_path = os.path.join(serverFilesDir(), file_name)
@@ -238,11 +293,13 @@ def register(client_socket, initial_msg):
             break
 
     if handle_exists:
-        client_socket.send("taken".encode())
+        client_socket.send("/register taken".encode())
         print(f"Error: {client_address} | Handle {handle} already taken.")
     else:
-        client_socket.send("good".encode())
+        client_socket.send("/register good".encode())
         connected_clients[client_address] = handle
+        broadcastactions(client_socket, f"{handle} has joined the server.")
+        # print(connected_clients)
         # print(handle)
         # for client_address, handle in connected_clients.items():
         #     print("Client Address:", client_address)
@@ -253,9 +310,11 @@ def leave(client_socket):
     client_address = client_socket.getpeername()
     handle = connected_clients[client_address]
     print(f"Connection from {client_address} closed.")
-    client_socket.close()
+
+    broadcastactions(client_socket, f"{handle} has left the server.")
     # client_socket.send("{handle} has left the room.".encode())
     del connected_clients[client_address]
+    clients.remove(client_socket)
 
     # if no more connected users = server shuts down
     if len(connected_clients) == 0:
