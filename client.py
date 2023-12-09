@@ -9,8 +9,6 @@ Roco, Gwen Kathleen
 Tabadero, Audrea Arjaemi
 """
 
-import queue
-import subprocess
 import sys
 import threading
 import tkinter as tk
@@ -118,9 +116,8 @@ class FileSenderGUI(tk.Tk):
         self.join_button_hidden = True
         self.server_address_entry.config(state=tk.DISABLED)
         self.server_port_entry.config(state=tk.DISABLED)
-        self.join_button.pack_forget()  # Hide the "Join Server" button
+        self.join_button.pack_forget() 
             
-        # Show the "handle" text field
         self.handle_label.pack(padx=10, pady=10)
         self.register_entry.pack(padx=10, pady=10)
         self.register_button.pack(pady=10)
@@ -129,7 +126,7 @@ class FileSenderGUI(tk.Tk):
         messagebox.showinfo("wow!", "Connection to the File Exchange Server is Successful!")
         self.status_label.config(text=joinmsg)
 
-    # /send message (for chatting WIP)
+    # updates messagebox
     def send_message(self):
         message = self.input_field.get()
         self.client_socket.send(f"{message}<END>{self.handle.get()}".encode())
@@ -139,11 +136,13 @@ class FileSenderGUI(tk.Tk):
             finalmsg = "<" + timestamp + "> " + "FROM you TO " + message.split()[1] + ": " + message[len(f"/unicast {message.split()[1]}"):]
             self.display_message(finalmsg)
     
+    # /unicast
     def handle_unicast(self, handle, msg):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         finalmsg = "<" + timestamp + "> " + "FROM " + handle + ": " + msg
         self.display_message(finalmsg)
     
+    # /broadcast
     def handle_broadcast(self, handle, msg):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         finalmsg = "<" + timestamp + "> " + handle + " TO ALL: " + msg[len("/broadcast "):]
@@ -191,15 +190,12 @@ class FileSenderGUI(tk.Tk):
         answer = messagebox.askquestion("loh bat k aalis <//3", "Are you sure you want to quit?")
         if answer == "yes":
             self.client_socket.send("/leave".encode())
-            # self.root.destroy()
     
     def handle_leave(self):
         self.client_socket.close()
-        # self.receive_loop = False
         self.reset_state()
     
     def reset_state(self):
-        # Reset your application state here
         self.joined_server = False
         self.join_button_hidden = False
         self.server_address.set("")
@@ -332,18 +328,19 @@ class FileSenderGUI(tk.Tk):
             # self.displaymsg_withtime(f"Uploaded {base_name}")
             self.status_label.config(text="File sent successfully!")
     
+    # display users online
     def onlineusers(self):
         try:
             self.client_socket.send("/online".encode())
         except socket.error:
             pass
         
-
     def handle_onlineuser(self, message):
         self.display_message("____________________________\n")
         self.display_message(message[len("/online "):])
         self.display_message("____________________________\n")
-        
+    
+    # message receiver thread
     def receive_messages(self):
         self.client_socket.settimeout(50)
         try:
@@ -385,7 +382,6 @@ class FileSenderGUI(tk.Tk):
             self.client_socket.close()
             print("Connection closed.")
 
-        
 
     def run(self):
         if self.join_button_hidden:
