@@ -134,10 +134,10 @@ def process_command(client_socket, initial_msg):
         print(f"Error: {e}")
 
 def online(client_socket, message):
-    print(len(connected_clients))
-    print(connected_clients)
+    # print(len(connected_clients))
+    # print(connected_clients)
     online_users = "\n".join(f"{index}. {handle}" for index, handle in enumerate(connected_clients.values(), start=1) if handle)
-    print(online_users)
+    # print(online_users)
     message_to_send = f"/online Online Users\n{online_users}\n"
     client_socket.send(message_to_send.encode())
 
