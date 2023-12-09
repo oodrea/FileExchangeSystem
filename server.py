@@ -91,7 +91,7 @@ def handle_client(client_socket, client_address):
         client_socket.close()
 
 def process_command(client_socket, initial_msg):
-    print(f"socket: {client_socket} | msg: {initial_msg}")
+    # print(f"socket: {client_socket} | msg: {initial_msg}")
     try:
         command_type = initial_msg.split()[0]
 
@@ -117,7 +117,7 @@ def process_command(client_socket, initial_msg):
             broadcast(client_socket, initial_msg)
 
         elif command_type == "/unicast":
-            pass
+            unicast(client_socket, initial_msg)
 
         else:
             pass
@@ -144,7 +144,9 @@ def unicast(sender_socket, message):
         parts = message.split(maxsplit=2)
         if len(parts) >= 3:
             handle = parts[1]
+            # print(handle)
             message_body = parts[2]
+            # print(message_body)
 
             # Find the socket associated with the specified handle
             for client_socket in clients:
@@ -153,6 +155,7 @@ def unicast(sender_socket, message):
                     client_handle = connected_clients.get(client_address, "")
                     if client_handle == handle:
                         # Send the unicast message to the specified client
+                        print(f"/unicast {handle} {message_body}")
                         client_socket.send(f"/unicast {handle} {message_body}".encode())
                         return
 
@@ -254,6 +257,9 @@ def store(client_socket):
     server_files[len(server_files) + 1] = file_name
     file.write(file_bytes)
     file.close()
+    handle = connected_clients[client]
+    broadcastactions(client_socket, f"{handle} successfully uploaded {file_name} to the server")
+    send_success_message(client_socket, f"File {file_name} received")
 
 # /get
 def download_files(client_socket, initial_msg):
@@ -297,7 +303,7 @@ def register(client_socket, initial_msg):
         print(f"Error: {client_address} | Handle {handle} already taken.")
     else:
         client_socket.send("/register good".encode())
-        connected_clients[client_address] = handle
+        connected_clients[client_socket] = handle
         broadcastactions(client_socket, f"{handle} has joined the server.")
         # print(connected_clients)
         # print(handle)

@@ -319,10 +319,11 @@ class FileSenderGUI(tk.Tk):
                 data = file.read()
                 self.client_socket.sendall(data)
             
-            self.displaymsg_withtime(f"Uploaded {base_name}")
+            # self.displaymsg_withtime(f"Uploaded {base_name}")
             self.status_label.config(text="File sent successfully!")
         
     def receive_messages(self):
+        self.client_socket.settimeout(30)
         try:
             while self.receive_loop:
                 message = self.client_socket.recv(1024).decode('utf-8')
